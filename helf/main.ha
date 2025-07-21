@@ -4,13 +4,6 @@ use fs;
 use io;
 use os;
 
-type invalid_length = !void;
-type invalid_format = !void;
-type invalid_endianness = !void;
-type invalid_version = !void;
-type not_elf = !void;
-type error = !(invalid_length | invalid_format | invalid_endianness | invalid_version | not_elf);
-
 export fn main() void = {
 	if (len(os::args) < 2) {
 		fmt::fprintfln(os::stdout, "Error: [FILE] argument needed.")!;
@@ -91,21 +84,6 @@ fn is_ELF(file_content: []u8) (void | error) = {
 	};
 };
 
-fn strerror(err: error) str = {
-	match (err) {
-	case not_elf =>
-		return "File is not an ELF binary.";
-	case invalid_length =>
-		return "Invalid header length.";
-	case invalid_format =>
-		return "Invalid format (e_ident[EI_CLASS]).";
-	case invalid_endianness =>
-		return "Invalid endianness (e_ident[EI_DATA]).";
-	case invalid_version =>
-		return "Invalid version (e_ident[EI_VERSION]).";
-	};
-};
-
 fn get_format(file_content: []u8) (str | error) = {
 	const elfoffset: size = 0x04;
 	if (len(file_content) < elfoffset + 1) {
@@ -149,5 +127,27 @@ fn get_version(file_content: []u8) (str | error) = {
 	case => {
 		return invalid_version;
 	};
+	};
+};
+
+type invalid_length = !void;
+type invalid_format = !void;
+type invalid_endianness = !void;
+type invalid_version = !void;
+type not_elf = !void;
+type error = !(invalid_length | invalid_format | invalid_endianness | invalid_version | not_elf);
+
+fn strerror(err: error) str = {
+	match (err) {
+	case not_elf =>
+		return "File is not an ELF binary.";
+	case invalid_length =>
+		return "Invalid header length.";
+	case invalid_format =>
+		return "Invalid format (e_ident[EI_CLASS]).";
+	case invalid_endianness =>
+		return "Invalid endianness (e_ident[EI_DATA]).";
+	case invalid_version =>
+		return "Invalid version (e_ident[EI_VERSION]).";
 	};
 };
