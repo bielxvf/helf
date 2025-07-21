@@ -1,20 +1,52 @@
-use os;
-use io;
+use errors;
 use fmt;
+use fs;
+use io;
+use os;
 
 export fn main() void = {
-	const file = os::open(os::args[1])!;
-	defer io::close(file)!;
-	const file_content = io::drain(file)!;
-
-	if (!is_elf(file_content)) {
-		fmt::println("not an ELF")!;
+	if (len(os::args) < 2) {
+		fmt::fprintfln(os::stdout, "Error: [FILE] argument needed.")!;
+		print_usage();
+		os::exit(1);
+	} else if (os::args[1] == "-h" || os::args[1] == "--help") {
+		print_usage();
 		return;
 	};
-
-	if (is_64bit(file_content)) {
-		fmt::println("64-bit ELF")!;
+	const path = os::args[1];
+	const file = match (os::open(path)) {
+	case let file: io::file =>
+		yield file;
+	case let err: fs::error =>
+		fmt::fatalf("Error opening '{}': {}", path, fs::strerror(err));
 	};
+	defer io::close(file)!;
+
+	const file_content = match (io::drain(file)) {
+	case let file_content: []u8 =>
+		yield file_content;
+	case let err: io::error =>
+		fmt::fatalf("Error reading '{}': {}", path, io::strerror(err));
+	};
+
+	if (!is_elf(file_content[0..4])) {
+		fmt::printfln("'{}' is not an ELF binary!", path)!;
+		os::exit(1);
+	};
+
+	fmt::printfln("ELF")!;
+	fmt::printf("Data: ")!;
+	if (is_64bit(file_content)) {
+		fmt::printfln("64-bit")!;
+	} else {
+		fmt::printfln("32-bit")!;
+	};
+};
+
+fn print_usage() void = {
+	fmt::printfln("Usage: helf [OPTIONS...] [FILE]")!;
+	fmt::printfln("Options:")!;
+	fmt::printfln("\t-h,--help\tPrint this help message")!;
 };
 
 fn is_elf(file_content: []u8) bool = {
@@ -36,7 +68,6 @@ fn is_elf(file_content: []u8) bool = {
 
 fn is_64bit(file_content: []u8) bool = {
 
-	// TODO: Handle this as error
 	if (len(file_content) < 5) {
 		return false;
 	};
@@ -49,7 +80,6 @@ fn is_64bit(file_content: []u8) bool = {
 		return true;
 	};
 	case => {
-		// TODO: Handle this as error
 		return false;
 	};
 	};
